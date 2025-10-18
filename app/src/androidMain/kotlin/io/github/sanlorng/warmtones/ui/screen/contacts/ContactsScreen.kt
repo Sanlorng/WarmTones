@@ -27,7 +27,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -41,12 +40,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Devices
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import io.github.sanlorng.warmtones.R
@@ -56,7 +55,6 @@ import io.github.sanlorng.warmtones.ui.components.FilledTonalIconButton
 import io.github.sanlorng.warmtones.ui.components.IconButton
 import io.github.sanlorng.warmtones.ui.components.PageScaffold
 import io.github.sanlorng.warmtones.ui.theme.WarmTonesTheme
-import io.github.sanlorng.warmtones.ui.util.toColor
 import kotlinx.coroutines.flow.MutableSharedFlow
 
 @Composable
@@ -75,16 +73,8 @@ fun ContactsScreen(
     )
 
     val context = LocalContext.current
-    LaunchedEffect(Unit) {
-        sideEffects.collect {
-            when (it) {
-                is ContactsViewModel.SideEffect.Dial -> {
-                    val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:${it.phoneNumber}"))
-                    context.startActivity(intent)
-                }
-            }
-        }
-    }
+
+    collectSideEffect(sideEffects)
 
     if (state.showInstallTtsDataDialog) {
         AlertDialog(
@@ -132,9 +122,13 @@ fun ContactsScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally)
             ) {
+                val hapticFeedback = LocalHapticFeedback.current
                 val dialButton = @Composable {
                     FilledIconButton(
-                        onClick = { onEvent(ContactsEvent.DialContact) },
+                        onClick = {
+                            onEvent(ContactsEvent.DialContact)
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.Confirm)
+                        },
                         enabled = state.selectedIndex != -1,
                         colors = IconButtonDefaults.filledIconButtonColors(
                             containerColor = if (state.isDialConfirmationPending) {
@@ -152,9 +146,6 @@ fun ContactsScreen(
                         )
                     }
                 }
-                val spacer = @Composable {
-                    Spacer(Modifier.size(IconButtonDefaults.largeContainerSize()))
-                }
 
                 if (!state.isLeftHandedModeEnabled) {
                     Spacer(modifier = Modifier.size(0.dp))
@@ -162,7 +153,10 @@ fun ContactsScreen(
                 }
 
                     FilledTonalIconButton(
-                        onClick = { onEvent(ContactsEvent.SelectPreviousContact) },
+                        onClick = {
+                            onEvent(ContactsEvent.SelectPreviousContact)
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.KeyboardTap)
+                                  },
                         modifier = Modifier.size(IconButtonDefaults.mediumContainerSize())
                     ) {
                         Icon(
@@ -172,7 +166,11 @@ fun ContactsScreen(
                     }
 
                     FilledTonalIconButton(
-                        onClick = { onEvent(ContactsEvent.SelectNextContact) },
+                        onClick = {
+                            onEvent(ContactsEvent.SelectNextContact)
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.KeyboardTap)
+
+                        },
                         modifier = Modifier.size(IconButtonDefaults.mediumContainerSize())
                     ) {
                         Icon(
@@ -256,6 +254,21 @@ fun ContactsScreen(
             ) {
                 Button(onClick = { launcher.launch(arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.CALL_PHONE)) }) {
                     Text("请求权限")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun collectSideEffect(sideEffects: kotlinx.coroutines.flow.SharedFlow<ContactsViewModel.SideEffect>) {
+    val context = LocalContext.current
+    LaunchedEffect(context) {
+        sideEffects.collect {
+            when (it) {
+                is ContactsViewModel.SideEffect.Dial -> {
+                    val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:${it.phoneNumber}"))
+                    context.startActivity(intent)
                 }
             }
         }

@@ -14,7 +14,7 @@ class ContactsPagerViewModel(
     settingsRepository: SettingsRepository
 ) : ContactsViewModel(application, settingsRepository) {
 
-    val pagerState = state.map { ContactsPagerState(it.contacts) }.stateIn(
+    val pagerState = state.map { ContactsPagerState(it.contacts, it.isLeftHandedModeEnabled) }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = ContactsPagerState()

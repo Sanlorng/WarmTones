@@ -24,9 +24,10 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import io.github.sanlorng.warmtones.R
@@ -35,13 +36,15 @@ import io.github.sanlorng.warmtones.ui.components.FilledIconButton
 import io.github.sanlorng.warmtones.ui.components.IconButton
 import io.github.sanlorng.warmtones.ui.components.PageScaffold
 import io.github.sanlorng.warmtones.ui.screen.contacts.Contact
+import io.github.sanlorng.warmtones.ui.screen.contacts.ContactsViewModel
+import io.github.sanlorng.warmtones.ui.screen.contacts.collectSideEffect
 import io.github.sanlorng.warmtones.ui.theme.WarmTonesTheme
-import io.github.sanlorng.warmtones.ui.util.toColor
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ContactsPagerScreen(
     state: ContactsPagerState,
+    sideEffects: kotlinx.coroutines.flow.SharedFlow<ContactsViewModel.SideEffect>,
     onNavigateToSettings: () -> Unit,
     onEvent: (ContactsPagerEvent) -> Unit
 ) {
@@ -57,7 +60,7 @@ fun ContactsPagerScreen(
                 },
                 onClick = onNavigateToSettings
             )
-        }
+        },
     ) { padding ->
         if (state.contacts.isEmpty()) {
             Box(
@@ -72,11 +75,14 @@ fun ContactsPagerScreen(
         }
 
         val pagerState = rememberPagerState { state.contacts.size }
+        val hapticFeedback = LocalHapticFeedback.current
+        collectSideEffect(sideEffects)
 
-        LaunchedEffect(pagerState) {
-            snapshotFlow { pagerState.currentPage }.collect {
+        LaunchedEffect(pagerState, hapticFeedback) {
+            snapshotFlow { pagerState.settledPage }.collect {
                 val contact = state.contacts[it]
                 onEvent(ContactsPagerEvent.SpeakContact(contact))
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
             }
         }
 
@@ -87,50 +93,54 @@ fun ContactsPagerScreen(
                 .padding(padding)
         ) { page ->
             val contact = state.contacts[page]
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .clickable { onEvent(ContactsPagerEvent.SpeakContact(contact)) }
                     .padding(16.dp)
             ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    if (contact.photoUri != null) {
-                        Image(
-                            painter = rememberAsyncImagePainter(contact.photoUri),
-                            contentDescription = contact.name,
-                            modifier = Modifier
-                                .size(128.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                    Text(
-                        contact.name,
-                        style = MaterialTheme.typography.displayLarge,
-                        color = contact.name.toColor()
-                    )
-                }
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .padding(bottom = 32.dp),
-                    horizontalArrangement = if (state.isLeftHandedModeEnabled) Arrangement.End else Arrangement.Start,
-                ) {
-                    FilledIconButton(
-                        onClick = { onEvent(ContactsPagerEvent.DialContact(contact)) },
-                        modifier = Modifier.size(IconButtonDefaults.largeContainerSize())
+                Box(modifier = Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.call_24px),
-                            contentDescription = "拨打电话"
+                        if (contact.photoUri != null) {
+                            Image(
+                                painter = rememberAsyncImagePainter(contact.photoUri),
+                                contentDescription = contact.name,
+                                modifier = Modifier
+                                    .size(128.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        Text(
+                            text = contact.name,
+                            style = MaterialTheme.typography.displayLarge,
                         )
                     }
                 }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 32.dp),
+                        horizontalArrangement = if (state.isLeftHandedModeEnabled) Arrangement.End else Arrangement.Start,
+                    ) {
+                        FilledIconButton(
+                            onClick = {
+                                onEvent(ContactsPagerEvent.DialContact(contact))
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.KeyboardTap)
+                            },
+                            modifier = Modifier.size(IconButtonDefaults.largeContainerSize())
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.call_24px),
+                                contentDescription = "拨打电话"
+                            )
+                        }
+                    }
             }
         }
     }
@@ -152,7 +162,8 @@ fun ContactsPagerScreenPreview() {
         ContactsPagerScreen(
             state = sampleState,
             onEvent = {},
-            onNavigateToSettings = {}
+            onNavigateToSettings = {},
+            sideEffects = kotlinx.coroutines.flow.MutableSharedFlow()
         )
     }
 }

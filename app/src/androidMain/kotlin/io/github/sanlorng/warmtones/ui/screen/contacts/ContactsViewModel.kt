@@ -2,9 +2,7 @@ package io.github.sanlorng.warmtones.ui.screen.contacts
 
 import android.Manifest
 import android.app.Application
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.provider.ContactsContract
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -109,7 +107,7 @@ open class ContactsViewModel(application: Application, private val settingsRepos
                 _state.update { it.copy(isDialConfirmationPending = true) }
                 ttsHelper.speak("即将拨打电话给 ${contact.name}，如需确认，请再次按下拨打按钮")
                 dialConfirmationJob = viewModelScope.launch {
-                    delay(5000)
+                    delay(10000)
                     _state.update { it.copy(isDialConfirmationPending = false) }
                 }
             } else {

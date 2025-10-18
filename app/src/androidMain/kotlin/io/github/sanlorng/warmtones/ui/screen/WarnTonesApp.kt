@@ -48,15 +48,18 @@ fun WarmTonesApp(application: Application) {
                 LaunchedEffect(currentStartDestination) {
                     backStack[0] = currentStartDestination
                 }
-                val context = LocalContext.current.applicationContext as Application
-                val settingsRepository = remember { SettingsRepository(context) }
+                val currentContext = LocalContext.current
+                val applicationContext = currentContext.applicationContext as Application
+                val settingsRepository = remember { SettingsRepository(applicationContext) }
+
+
 
                 NavDisplay(
                     backStack = backStack,
                     entryProvider = entryProvider {
                         entry<Route.Contacts> {
                             val contactsViewModel: ContactsViewModel = viewModel {
-                                ContactsViewModel(context, settingsRepository)
+                                ContactsViewModel(applicationContext, settingsRepository)
                             }
                             val state by contactsViewModel.state.collectAsState()
                             ContactsScreen(
@@ -79,13 +82,14 @@ fun WarmTonesApp(application: Application) {
                         }
                         entry<Route.Pager> {
                             val contactsPagerViewModel: ContactsPagerViewModel = viewModel {
-                                ContactsPagerViewModel(context, settingsRepository)
+                                ContactsPagerViewModel(applicationContext, settingsRepository)
                             }
                             val state by contactsPagerViewModel.pagerState.collectAsState()
                             ContactsPagerScreen(
                                 state = state,
                                 onEvent = contactsPagerViewModel::onPagerEvent,
-                                onNavigateToSettings = { backStack.add(Route.Settings) }
+                                onNavigateToSettings = { backStack.add(Route.Settings) },
+                                sideEffects = contactsPagerViewModel.sideEffects
                             )
                         }
                     }
