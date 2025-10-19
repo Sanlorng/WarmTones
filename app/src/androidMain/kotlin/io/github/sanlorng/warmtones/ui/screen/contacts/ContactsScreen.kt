@@ -67,6 +67,7 @@ fun ContactsScreen(
 ) {
 
     collectSideEffect(sideEffects)
+    val hapticFeedback = LocalHapticFeedback.current
 
     PageScaffold(
         title = "联系人",
@@ -90,7 +91,6 @@ fun ContactsScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally)
             ) {
-                val hapticFeedback = LocalHapticFeedback.current
                 val dialButton = @Composable {
                     DialButton(
                         enabled = state.selectedIndex != -1,
@@ -169,7 +169,12 @@ fun ContactsScreen(
                     ContactAvatar(
                         contact = selected,
                         modifier = Modifier
-                            .size(108.dp)
+                            .size(128.dp)
+                            .clip(CircleShape)
+                            .clickable {
+                                onEvent(ContactsEvent.SpeakContact(selected))
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.KeyboardTap)
+                            }
                     )
                 }
             }
@@ -197,7 +202,10 @@ fun ContactsScreen(
                         headlineContent = { Text(contact.name, style = headlineStyle) },
                         modifier = Modifier
                             .clip(MaterialTheme.shapes.large)
-                            .clickable { onEvent(ContactsEvent.SelectContact(contact)) },
+                            .clickable {
+                                onEvent(ContactsEvent.SelectContact(contact))
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.KeyboardTap)
+                            },
                         colors = ListItemDefaults.colors(containerColor = containerColor),
                     )
                 }

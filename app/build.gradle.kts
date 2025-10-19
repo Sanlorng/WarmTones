@@ -1,6 +1,8 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import java.io.FileInputStream
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -82,13 +84,29 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("config") {
+            val keystore = Properties()
+            keystore.load(FileInputStream(rootProject.file("keystore.properties")))
+            keyAlias = keystore.getProperty("keyAlias")
+            keyPassword = keystore.getProperty("keyAliasPassword")
+            storeFile = file(keystore.getProperty("keystoreFile"))
+            storePassword = keystore.getProperty("keystorePassword")
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("config")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+
+        debug {
+            signingConfig = signingConfigs.getByName("config")
         }
     }
     compileOptions {

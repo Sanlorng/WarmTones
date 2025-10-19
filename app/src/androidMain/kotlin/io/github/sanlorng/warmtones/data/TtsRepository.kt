@@ -21,13 +21,14 @@ class TtsRepository(private val context: Context) {
             if (status != TextToSpeech.SUCCESS) {
                 _isTtsAvailable.tryEmit(false)
             } else {
+                _isTtsAvailable.value = true
                 tts?.let {
-                    val result = it.setLanguage(Locale.getDefault())
-                    if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                        _isTtsAvailable.tryEmit(false)
-                    } else {
-                        _isTtsAvailable.value = true
-                    }
+//                    val result = it.setLanguage(Locale.getDefault())
+//                    if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+//                        _isTtsAvailable.tryEmit(false)
+//                    } else {
+//                        _isTtsAvailable.value = true
+//                    }
                 }
             }
         }
@@ -51,8 +52,8 @@ class TtsRepository(private val context: Context) {
                     }
                     val langResult = tts?.setLanguage(Locale.getDefault())
                     channel.trySend(when(langResult) {
-                        TextToSpeech.LANG_MISSING_DATA -> false
-                        TextToSpeech.LANG_NOT_SUPPORTED -> false
+//                        TextToSpeech.LANG_MISSING_DATA -> false
+//                        TextToSpeech.LANG_NOT_SUPPORTED -> false
                         else -> {
                             if (tts?.engines.isNullOrEmpty()) {
                                 false
