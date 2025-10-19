@@ -1,16 +1,13 @@
 package io.github.sanlorng.warmtones.ui.screen.contacts
 
-import android.Manifest
 import android.app.Application
-import android.content.pm.PackageManager
 import android.provider.ContactsContract
 import android.util.Log
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.sanlorng.warmtones.data.PermissionsRepository
 import io.github.sanlorng.warmtones.data.SettingsRepository
-import io.github.sanlorng.warmtones.tts.SystemTtsHelper
-import io.github.sanlorng.warmtones.tts.TtsHelper
+import io.github.sanlorng.warmtones.data.TtsRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -26,7 +23,12 @@ import net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat
 import net.sourceforge.pinyin4j.format.HanyuPinyinToneType
 import net.sourceforge.pinyin4j.format.exception.BadHanyuPinyinOutputFormatCombination
 
-open class ContactsViewModel(application: Application, private val settingsRepository: SettingsRepository) : AndroidViewModel(application) {
+open class ContactsViewModel(
+    application: Application,
+    private val settingsRepository: SettingsRepository,
+    private val permissionsRepository: PermissionsRepository,
+    internal val ttsRepository: TtsRepository
+) : AndroidViewModel(application) {
 
     private val _state = MutableStateFlow(ContactsState())
     val state = _state.asStateFlow()
@@ -34,44 +36,31 @@ open class ContactsViewModel(application: Application, private val settingsRepos
     private val _sideEffects = MutableSharedFlow<SideEffect>()
     val sideEffects = _sideEffects.asSharedFlow()
 
-    protected val ttsHelper: TtsHelper
     private var dialConfirmationJob: Job? = null
 
     init {
-        ttsHelper = SystemTtsHelper(application) {
-            _state.update { it.copy(showInstallTtsDataDialog = true) }
-        }
-
         viewModelScope.launch {
             settingsRepository.isLeftHandedModeEnabled.collect { isEnabled ->
                 _state.update { it.copy(isLeftHandedModeEnabled = isEnabled) }
             }
         }
 
-        // Check for permissions
-        val permissions = arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.CALL_PHONE)
-        val allGranted = permissions.all { ContextCompat.checkSelfPermission(getApplication(), it) == PackageManager.PERMISSION_GRANTED }
-        onEvent(ContactsEvent.PermissionResult(allGranted))
+        viewModelScope.launch {
+            permissionsRepository.permissionsGranted.collect { isGranted ->
+                if (isGranted) {
+                    loadContacts()
+                }
+            }
+        }
     }
 
     fun onEvent(event: ContactsEvent) {
         when (event) {
-            is ContactsEvent.PermissionResult -> {
-                viewModelScope.launch {
-                    val currentlyGranted = _state.value.permissionGranted
-                    if (event.isGranted != currentlyGranted) {
-                        _state.update { it.copy(permissionGranted = event.isGranted) }
-                    }
-                    if (event.isGranted) {
-                        loadContacts()
-                    }
-                }
-            }
             ContactsEvent.LoadContacts -> {
                 loadContacts()
             }
             is ContactsEvent.SpeakContact -> {
-                viewModelScope.launch { ttsHelper.speak(event.contact.name) }
+                viewModelScope.launch { ttsRepository.speak(event.contact.name) }
             }
             ContactsEvent.SelectNextContact -> {
                 selectNextContact()
@@ -85,9 +74,6 @@ open class ContactsViewModel(application: Application, private val settingsRepos
             ContactsEvent.DialContact -> {
                 handleDialContact()
             }
-            ContactsEvent.DismissInstallTtsDataDialog -> {
-                _state.update { it.copy(showInstallTtsDataDialog = false) }
-            }
         }
     }
 
@@ -98,14 +84,14 @@ open class ContactsViewModel(application: Application, private val settingsRepos
         val contact = state.contacts[state.selectedIndex]
         handleDialContact(contact)
     }
-    
+
     fun handleDialContact(contact: Contact) {
         viewModelScope.launch {
             val isConfirmationEnabled = settingsRepository.isDialConfirmationEnabled.first()
 
             if (isConfirmationEnabled && !_state.value.isDialConfirmationPending) {
                 _state.update { it.copy(isDialConfirmationPending = true) }
-                ttsHelper.speak("即将拨打电话给 ${contact.name}，如需确认，请再次按下拨打按钮")
+                ttsRepository.speak("即将拨打电话给 ${contact.name}，如需确认，请再次按下拨打按钮")
                 dialConfirmationJob = viewModelScope.launch {
                     delay(10000)
                     _state.update { it.copy(isDialConfirmationPending = false) }
@@ -124,7 +110,7 @@ open class ContactsViewModel(application: Application, private val settingsRepos
         val index = _state.value.contacts.indexOf(contact)
         if (index != -1) {
             _state.update { it.copy(selectedIndex = index) }
-            viewModelScope.launch { ttsHelper.speak(contact.name) }
+            viewModelScope.launch { ttsRepository.speak(contact.name) }
         }
     }
 
@@ -135,7 +121,7 @@ open class ContactsViewModel(application: Application, private val settingsRepos
         if (state.contacts.isNotEmpty()) {
             val nextIndex = (state.selectedIndex + 1) % state.contacts.size
             _state.update { it.copy(selectedIndex = nextIndex) }
-            viewModelScope.launch { ttsHelper.speak(state.contacts[nextIndex].name) }
+            viewModelScope.launch { ttsRepository.speak(state.contacts[nextIndex].name) }
         }
     }
 
@@ -146,7 +132,7 @@ open class ContactsViewModel(application: Application, private val settingsRepos
         if (state.contacts.isNotEmpty()) {
             val prevIndex = (state.selectedIndex - 1 + state.contacts.size) % state.contacts.size
             _state.update { it.copy(selectedIndex = prevIndex) }
-            viewModelScope.launch { ttsHelper.speak(state.contacts[prevIndex].name) }
+            viewModelScope.launch { ttsRepository.speak(state.contacts[prevIndex].name) }
         }
     }
 
@@ -166,7 +152,7 @@ open class ContactsViewModel(application: Application, private val settingsRepos
                 null,
                 null
             )
-            cursor?.use { 
+            cursor?.use {
                 val idIndex = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone._ID)
                 val nameIndex = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
                 val numberIndex = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
@@ -183,10 +169,10 @@ open class ContactsViewModel(application: Application, private val settingsRepos
             val sortedContacts = contacts.sortedBy { getSortKey(it.name) }
 
             _state.update { it.copy(contacts = sortedContacts) }
-            
+
             if (sortedContacts.isNotEmpty()) {
                 _state.update { it.copy(selectedIndex = 0) }
-                ttsHelper.speak(sortedContacts[0].name)
+                ttsRepository.speak(sortedContacts[0].name)
             }
         }
     }
@@ -214,7 +200,7 @@ open class ContactsViewModel(application: Application, private val settingsRepos
     }
 
     override fun onCleared() {
-        ttsHelper.shutdown()
+        ttsRepository.shutdown()
         super.onCleared()
     }
 

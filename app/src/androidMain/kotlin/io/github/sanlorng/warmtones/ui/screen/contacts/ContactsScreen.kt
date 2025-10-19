@@ -1,16 +1,11 @@
 package io.github.sanlorng.warmtones.ui.screen.contacts
 
-import android.Manifest
 import android.content.Intent
 import android.net.Uri
-import android.speech.tts.TextToSpeech
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -24,15 +19,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -46,6 +38,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import io.github.sanlorng.warmtones.R
@@ -64,42 +58,8 @@ fun ContactsScreen(
     sideEffects: kotlinx.coroutines.flow.SharedFlow<ContactsViewModel.SideEffect>,
     onNavigateToSettings: () -> Unit
 ) {
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions(),
-        onResult = { permissions ->
-            val allGranted = permissions.all { it.value }
-            onEvent(ContactsEvent.PermissionResult(allGranted))
-        }
-    )
-
-    val context = LocalContext.current
 
     collectSideEffect(sideEffects)
-
-    if (state.showInstallTtsDataDialog) {
-        AlertDialog(
-            onDismissRequest = { onEvent(ContactsEvent.DismissInstallTtsDataDialog) },
-            title = { Text("缺少语音包") },
-            text = { Text("您的手机缺少中文语音包，导致无法播报。是否现在前往系统设置进行下载？") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val installIntent = Intent()
-                        installIntent.action = TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA
-                        context.startActivity(installIntent)
-                        onEvent(ContactsEvent.DismissInstallTtsDataDialog)
-                    }
-                ) {
-                    Text("下载")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { onEvent(ContactsEvent.DismissInstallTtsDataDialog) }) {
-                    Text("取消")
-                }
-            }
-        )
-    }
 
     PageScaffold(
         title = "联系人",
@@ -124,61 +84,45 @@ fun ContactsScreen(
             ) {
                 val hapticFeedback = LocalHapticFeedback.current
                 val dialButton = @Composable {
-                    FilledIconButton(
-                        onClick = {
-                            onEvent(ContactsEvent.DialContact)
-                            hapticFeedback.performHapticFeedback(HapticFeedbackType.Confirm)
-                        },
+                    DialButton(
                         enabled = state.selectedIndex != -1,
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = if (state.isDialConfirmationPending) {
-                                MaterialTheme.colorScheme.errorContainer
-                            } else {
-                                Color.Unspecified
-                            },
-                            contentColor = Color.Unspecified
-                        ),
-                        modifier = Modifier.size(IconButtonDefaults.largeContainerSize())
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.call_24px),
-                            contentDescription = "拨号"
-                        )
-                    }
+                        confirmPending = state.isDialConfirmationPending,
+                        oncClick = { onEvent(ContactsEvent.DialContact) }
+                    )
                 }
 
                 if (!state.isLeftHandedModeEnabled) {
-                    Spacer(modifier = Modifier.size(0.dp))
                     dialButton()
+                    Spacer(modifier = Modifier.size(0.dp))
                 }
 
-                    FilledTonalIconButton(
-                        onClick = {
-                            onEvent(ContactsEvent.SelectPreviousContact)
-                            hapticFeedback.performHapticFeedback(HapticFeedbackType.KeyboardTap)
-                                  },
-                        modifier = Modifier.size(IconButtonDefaults.mediumContainerSize())
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.page_indicator_24px),
-                            contentDescription = "上一个"
-                        )
-                    }
+                FilledTonalIconButton(
+                    onClick = {
+                        onEvent(ContactsEvent.SelectPreviousContact)
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.KeyboardTap)
+                    },
+                    modifier = Modifier.size(IconButtonDefaults.mediumContainerSize())
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.page_indicator_24px),
+                        contentDescription = "上一个"
+                    )
+                }
 
-                    FilledTonalIconButton(
-                        onClick = {
-                            onEvent(ContactsEvent.SelectNextContact)
-                            hapticFeedback.performHapticFeedback(HapticFeedbackType.KeyboardTap)
+                FilledTonalIconButton(
+                    onClick = {
+                        onEvent(ContactsEvent.SelectNextContact)
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.KeyboardTap)
 
-                        },
-                        modifier = Modifier.size(IconButtonDefaults.mediumContainerSize())
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.page_indicator_24px),
-                            contentDescription = "下一个",
-                            modifier = Modifier.rotate(180f)
-                        )
-                    }
+                    },
+                    modifier = Modifier.size(IconButtonDefaults.mediumContainerSize())
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.page_indicator_24px),
+                        contentDescription = "下一个",
+                        modifier = Modifier.rotate(180f)
+                    )
+                }
 
                 if (state.isLeftHandedModeEnabled) {
                     Spacer(modifier = Modifier.size(0.dp))
@@ -187,76 +131,94 @@ fun ContactsScreen(
             }
         }
     ) { padding ->
-        if (state.permissionGranted) {
-            val listState = rememberLazyListState()
-            val density = LocalDensity.current
 
-            LaunchedEffect(state.selectedIndex) {
-                if (state.selectedIndex != -1) {
-                    val offset = if (state.selectedIndex > 0) {
-                        with(density) { -(56.dp.toPx() / 3).toInt() }
-                    } else {
-                        0
-                    }
-                    listState.animateScrollToItem(
-                        index = state.selectedIndex,
-                        scrollOffset = offset
-                    )
-                }
-            }
+        val listState = rememberLazyListState()
+        val density = LocalDensity.current
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                state = listState,
-                verticalArrangement = Arrangement.Top
-            ) {
-                itemsIndexed(state.contacts, key = { _, contact -> contact.id }) { index, contact ->
-                    val isSelected = index == state.selectedIndex
-                    val containerColor = if (isSelected) {
-                        MaterialTheme.colorScheme.secondaryContainer
-                    } else {
-                        Color.Transparent
-                    }
-                    val headlineStyle = if (isSelected) {
-                        MaterialTheme.typography.headlineLarge
-                    } else {
-                        MaterialTheme.typography.bodyLarge
-                    }
-
-                    ListItem(
-                        headlineContent = { Text(contact.name, style = headlineStyle) },
-                        leadingContent = {
-                            if (contact.photoUri != null) {
-                                Image(
-                                    painter = rememberAsyncImagePainter(contact.photoUri),
-                                    contentDescription = contact.name,
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                        },
-                        modifier = Modifier.clickable { onEvent(ContactsEvent.SelectContact(contact)) },
-                        colors = ListItemDefaults.colors(containerColor = containerColor)
-                    )
+        LaunchedEffect(state.selectedIndex) {
+            if (state.selectedIndex != -1) {
+                val offset = if (state.selectedIndex > 0) {
+                    with(density) { -(56.dp.toPx() / 3).toInt() }
+                } else {
+                    0
                 }
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Button(onClick = { launcher.launch(arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.CALL_PHONE)) }) {
-                    Text("请求权限")
-                }
+                listState.animateScrollToItem(
+                    index = state.selectedIndex,
+                    scrollOffset = offset
+                )
             }
         }
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            state = listState,
+            verticalArrangement = Arrangement.Top
+        ) {
+            itemsIndexed(state.contacts, key = { _, contact -> contact.id }) { index, contact ->
+                val isSelected = index == state.selectedIndex
+                val containerColor = if (isSelected) {
+                    MaterialTheme.colorScheme.secondaryContainer
+                } else {
+                    Color.Transparent
+                }
+                val headlineStyle = if (isSelected) {
+                    MaterialTheme.typography.headlineLarge
+                } else {
+                    MaterialTheme.typography.bodyLarge
+                }
+
+                ListItem(
+                    headlineContent = { Text(contact.name, style = headlineStyle) },
+                    leadingContent = {
+                        if (contact.photoUri != null) {
+                            Image(
+                                painter = rememberAsyncImagePainter(contact.photoUri),
+                                contentDescription = contact.name,
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    },
+                    modifier = Modifier.clickable { onEvent(ContactsEvent.SelectContact(contact)) },
+                    colors = ListItemDefaults.colors(containerColor = containerColor)
+                )
+            }
+        }
+
+    }
+}
+
+@Composable
+internal fun DialButton(
+    enabled: Boolean,
+    confirmPending: Boolean,
+    oncClick: () -> Unit
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    FilledIconButton(
+        onClick = {
+            oncClick()
+            hapticFeedback.performHapticFeedback(HapticFeedbackType.Confirm)
+        },
+        enabled = enabled,
+        colors = IconButtonDefaults.filledIconButtonColors(
+            containerColor = if (confirmPending) {
+                MaterialTheme.colorScheme.errorContainer
+            } else {
+                Color.Unspecified
+            },
+            contentColor = Color.Unspecified
+        ),
+        modifier = Modifier.size(IconButtonDefaults.largeContainerSize())
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.call_24px),
+            contentDescription = "拨打电话"
+        )
     }
 }
 
@@ -275,19 +237,56 @@ internal fun collectSideEffect(sideEffects: kotlinx.coroutines.flow.SharedFlow<C
     }
 }
 
+/**
+ * This PreviewParameterProvider provides different states for the ContactsScreen preview.
+ * This allows us to test various UI scenarios, such as:
+ * - Right-handed mode (default)
+ * - Left-handed mode
+ * - Dial confirmation pending
+ * - No contacts available
+ * - Permissions not granted
+ */
+private class ContactsScreenPreviewProvider : PreviewParameterProvider<ContactsState> {
+    private val sampleContacts = listOf(
+        Contact(1, "John Doe", "1234567890", null),
+        Contact(2, "Jane Smith", "0987654321", "https://i.pravatar.cc/150?img=1"),
+        Contact(3, "张三", "13800138000", null)
+    )
+
+    override val values = sequenceOf(
+        // Default state, right-handed
+        ContactsState(
+            contacts = sampleContacts,
+            selectedIndex = 0,
+            isLeftHandedModeEnabled = false,
+            isDialConfirmationPending = false
+        ),
+        // Left-handed mode
+        ContactsState(
+            contacts = sampleContacts,
+            selectedIndex = 0,
+            isLeftHandedModeEnabled = true,
+            isDialConfirmationPending = false
+        ),
+        // No contacts
+        ContactsState(
+            contacts = emptyList(),
+            selectedIndex = -1
+        ),
+        // Dial confirmation pending
+        ContactsState(
+            contacts = sampleContacts,
+            selectedIndex = 0,
+            isDialConfirmationPending = true
+        )
+    )
+}
+
 @CustomPreview
 @Composable
-fun ContactsScreenPreview() {
-    val state = ContactsState(
-        permissionGranted = true,
-        contacts = listOf(
-            Contact(1, "John Doe", "1234567890", null),
-            Contact(2, "Jane Smith", "0987654321", null)
-
-        ),
-        selectedIndex = 0,
-        isLeftHandedModeEnabled = true
-    )
+fun ContactsScreenPreview(
+    @PreviewParameter(ContactsScreenPreviewProvider::class) state: ContactsState
+) {
     WarmTonesTheme {
         ContactsScreen(
             state = state,

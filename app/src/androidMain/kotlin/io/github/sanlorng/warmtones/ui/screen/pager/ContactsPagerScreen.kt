@@ -15,7 +15,6 @@ import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,11 +31,11 @@ import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import io.github.sanlorng.warmtones.R
 import io.github.sanlorng.warmtones.ui.components.CustomPreview
-import io.github.sanlorng.warmtones.ui.components.FilledIconButton
 import io.github.sanlorng.warmtones.ui.components.IconButton
 import io.github.sanlorng.warmtones.ui.components.PageScaffold
 import io.github.sanlorng.warmtones.ui.screen.contacts.Contact
 import io.github.sanlorng.warmtones.ui.screen.contacts.ContactsViewModel
+import io.github.sanlorng.warmtones.ui.screen.contacts.DialButton
 import io.github.sanlorng.warmtones.ui.screen.contacts.collectSideEffect
 import io.github.sanlorng.warmtones.ui.theme.WarmTonesTheme
 
@@ -69,7 +68,7 @@ fun ContactsPagerScreen(
                     .padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text("沒有聯繫人")
+                Text("沒有联系人")
             }
             return@PageScaffold
         }
@@ -128,18 +127,11 @@ fun ContactsPagerScreen(
                             .padding(bottom = 32.dp),
                         horizontalArrangement = if (state.isLeftHandedModeEnabled) Arrangement.End else Arrangement.Start,
                     ) {
-                        FilledIconButton(
-                            onClick = {
-                                onEvent(ContactsPagerEvent.DialContact(contact))
-                                hapticFeedback.performHapticFeedback(HapticFeedbackType.KeyboardTap)
-                            },
-                            modifier = Modifier.size(IconButtonDefaults.largeContainerSize())
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.call_24px),
-                                contentDescription = "拨打电话"
-                            )
-                        }
+                        DialButton(
+                            enabled = true,
+                            confirmPending = state.isDialConfirmationPending,
+                            oncClick = { onEvent(ContactsPagerEvent.DialContact(contact)) }
+                        )
                     }
             }
         }

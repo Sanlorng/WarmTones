@@ -1,12 +1,16 @@
 package io.github.sanlorng.warmtones
 
 import android.os.Bundle
+import android.view.View
+import android.view.ViewTreeObserver
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.navigation3.runtime.NavKey
+import androidx.lifecycle.lifecycleScope
+import io.github.sanlorng.warmtones.data.SettingsRepository
 import io.github.sanlorng.warmtones.ui.screen.WarmTonesApp
-import kotlinx.serialization.Serializable
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -15,19 +19,21 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            WarmTonesApp(application = application)
+            WarmTonesApp()
         }
+
+        val preDrawListener = ViewTreeObserver.OnPreDrawListener { false }
+
+        val contentView = findViewById<View>(android.R.id.content)
+            contentView.viewTreeObserver.addOnPreDrawListener(
+                preDrawListener
+            )
+
+        lifecycleScope.launch {
+            SettingsRepository(this@MainActivity)
+                .isPagerModeEnabled.first()
+            contentView.viewTreeObserver.removeOnPreDrawListener(preDrawListener)
+        }
+
     }
-}
-
-sealed interface Route : NavKey {
-
-    @Serializable
-    object Contacts : Route
-
-    @Serializable
-    object Settings : Route
-
-    @Serializable
-    object Pager : Route
 }
