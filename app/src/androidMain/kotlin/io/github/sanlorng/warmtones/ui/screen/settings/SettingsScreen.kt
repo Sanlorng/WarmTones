@@ -9,7 +9,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import io.github.sanlorng.warmtones.ui.components.CustomPreview
 import io.github.sanlorng.warmtones.ui.components.PageScaffold
 import io.github.sanlorng.warmtones.ui.theme.WarmTonesTheme
