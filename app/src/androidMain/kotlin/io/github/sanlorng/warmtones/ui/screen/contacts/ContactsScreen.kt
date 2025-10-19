@@ -6,15 +6,19 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -24,24 +28,27 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
-import coil.compose.rememberAsyncImagePainter
+import coil3.compose.AsyncImagePainter
+import coil3.compose.rememberAsyncImagePainter
 import io.github.sanlorng.warmtones.R
 import io.github.sanlorng.warmtones.ui.components.CustomPreview
 import io.github.sanlorng.warmtones.ui.components.FilledIconButton
@@ -71,6 +78,7 @@ fun ContactsScreen(
                 )
             }
         },
+        collapsedAppbar = true,
         floatingActionButton = {},
         bottomBar = {
             Row(
@@ -97,6 +105,7 @@ fun ContactsScreen(
                 }
 
                 FilledTonalIconButton(
+                    enabled = state.contacts.isNotEmpty(),
                     onClick = {
                         onEvent(ContactsEvent.SelectPreviousContact)
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.KeyboardTap)
@@ -110,10 +119,10 @@ fun ContactsScreen(
                 }
 
                 FilledTonalIconButton(
+                    enabled = state.contacts.isNotEmpty(),
                     onClick = {
                         onEvent(ContactsEvent.SelectNextContact)
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.KeyboardTap)
-
                     },
                     modifier = Modifier.size(IconButtonDefaults.mediumContainerSize())
                 ) {
@@ -149,43 +158,49 @@ fun ContactsScreen(
             }
         }
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            state = listState,
-            verticalArrangement = Arrangement.Top
-        ) {
-            itemsIndexed(state.contacts, key = { _, contact -> contact.id }) { index, contact ->
-                val isSelected = index == state.selectedIndex
-                val containerColor = if (isSelected) {
-                    MaterialTheme.colorScheme.secondaryContainer
-                } else {
-                    Color.Transparent
-                }
-                val headlineStyle = if (isSelected) {
-                    MaterialTheme.typography.headlineLarge
-                } else {
-                    MaterialTheme.typography.bodyLarge
-                }
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            state.contacts.getOrNull(state.selectedIndex)?.let { selected ->
 
-                ListItem(
-                    headlineContent = { Text(contact.name, style = headlineStyle) },
-                    leadingContent = {
-                        if (contact.photoUri != null) {
-                            Image(
-                                painter = rememberAsyncImagePainter(contact.photoUri),
-                                contentDescription = contact.name,
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-                    },
-                    modifier = Modifier.clickable { onEvent(ContactsEvent.SelectContact(contact)) },
-                    colors = ListItemDefaults.colors(containerColor = containerColor)
-                )
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(vertical = 16.dp)
+                ) {
+                    ContactAvatar(
+                        contact = selected,
+                        modifier = Modifier
+                            .size(108.dp)
+                    )
+                }
+            }
+            LazyColumn(
+                modifier = Modifier
+                    .padding(horizontal = 8.dp)
+                    .weight(1f),
+                state = listState,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                itemsIndexed(state.contacts, key = { _, contact -> contact.id }) { index, contact ->
+                    val isSelected = index == state.selectedIndex
+                    val containerColor = if (isSelected) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        Color.Transparent
+                    }
+                    val headlineStyle = if (isSelected) {
+                        MaterialTheme.typography.headlineLarge
+                    } else {
+                        MaterialTheme.typography.bodyLarge
+                    }
+
+                    ListItem(
+                        headlineContent = { Text(contact.name, style = headlineStyle) },
+                        modifier = Modifier
+                            .clip(MaterialTheme.shapes.large)
+                            .clickable { onEvent(ContactsEvent.SelectContact(contact)) },
+                        colors = ListItemDefaults.colors(containerColor = containerColor),
+                    )
+                }
             }
         }
 
@@ -219,6 +234,26 @@ internal fun DialButton(
             painter = painterResource(R.drawable.call_24px),
             contentDescription = "拨打电话"
         )
+    }
+}
+
+@Composable
+fun ContactAvatar(contact: Contact, modifier: Modifier = Modifier, textStyle: TextStyle = MaterialTheme.typography.displayLarge) {
+    Box(modifier.clip(CircleShape)) {
+        val painter = rememberAsyncImagePainter(model = contact.photoUri)
+        Image(painter, contentDescription = contact.name, modifier = Modifier.fillMaxSize())
+        if (painter.state.collectAsState().value !is AsyncImagePainter.State.Success) {
+            Surface(
+                color = MaterialTheme.colorScheme.tertiaryContainer,
+                modifier = Modifier.fillMaxSize().aspectRatio(1f)
+            ) {
+                Text(
+                    text = contact.name.take(1).uppercase(),
+                    style = textStyle,
+                    modifier = Modifier.fillMaxSize().wrapContentSize(Alignment.Center)
+                )
+            }
+        }
     }
 }
 
@@ -264,7 +299,7 @@ private class ContactsScreenPreviewProvider : PreviewParameterProvider<ContactsS
         // Left-handed mode
         ContactsState(
             contacts = sampleContacts,
-            selectedIndex = 0,
+            selectedIndex = 1,
             isLeftHandedModeEnabled = true,
             isDialConfirmationPending = false
         ),

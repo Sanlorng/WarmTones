@@ -34,6 +34,7 @@ kotlin {
             implementation(libs.androidx.adaptive.navigation3)
             implementation(libs.androidx.navigation3.ui)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.coil.compose)
         }
 
         androidMain.dependencies {
@@ -44,7 +45,6 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel.ktx)
             implementation(libs.pinyin4j)
             implementation(libs.androidx.lifecycle.viewmodel.navigation3)
-            implementation(libs.coil.compose)
         }
 
         invokeWhenCreated("androidDebug") {

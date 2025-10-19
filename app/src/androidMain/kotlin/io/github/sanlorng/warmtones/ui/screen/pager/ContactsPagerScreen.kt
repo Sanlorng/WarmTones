@@ -1,7 +1,6 @@
 package io.github.sanlorng.warmtones.ui.screen.pager
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,18 +20,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import coil.compose.rememberAsyncImagePainter
 import io.github.sanlorng.warmtones.R
 import io.github.sanlorng.warmtones.ui.components.CustomPreview
 import io.github.sanlorng.warmtones.ui.components.IconButton
 import io.github.sanlorng.warmtones.ui.components.PageScaffold
 import io.github.sanlorng.warmtones.ui.screen.contacts.Contact
+import io.github.sanlorng.warmtones.ui.screen.contacts.ContactAvatar
 import io.github.sanlorng.warmtones.ui.screen.contacts.ContactsViewModel
 import io.github.sanlorng.warmtones.ui.screen.contacts.DialButton
 import io.github.sanlorng.warmtones.ui.screen.contacts.collectSideEffect
@@ -60,6 +56,7 @@ fun ContactsPagerScreen(
                 onClick = onNavigateToSettings
             )
         },
+        collapsedAppbar = true
     ) { padding ->
         if (state.contacts.isEmpty()) {
             Box(
@@ -84,42 +81,40 @@ fun ContactsPagerScreen(
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
             }
         }
-
-        VerticalPager(
-            state = pagerState,
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-        ) { page ->
-            val contact = state.contacts[page]
-            Column(
+        ) {
+
+            VerticalPager(
+                state = pagerState,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .clickable { onEvent(ContactsPagerEvent.SpeakContact(contact)) }
-                    .padding(16.dp)
-            ) {
-                Box(modifier = Modifier.weight(1f)) {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        if (contact.photoUri != null) {
-                            Image(
-                                painter = rememberAsyncImagePainter(contact.photoUri),
-                                contentDescription = contact.name,
-                                modifier = Modifier
-                                    .size(128.dp)
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
+                    .weight(1f)
+            ) { page ->
+                val contact = state.contacts[page]
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable { onEvent(ContactsPagerEvent.SpeakContact(contact)) }
+                        .padding(16.dp)
+                ) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            ContactAvatar(
+                                contact = contact,
+                                modifier = Modifier.size(128.dp)
+                            )
+                            Text(
+                                text = contact.name,
+                                style = MaterialTheme.typography.displayLarge,
                             )
                         }
-                        Text(
-                            text = contact.name,
-                            style = MaterialTheme.typography.displayLarge,
-                        )
                     }
-                }
 
                     Row(
                         modifier = Modifier
@@ -133,6 +128,7 @@ fun ContactsPagerScreen(
                             oncClick = { onEvent(ContactsPagerEvent.DialContact(contact)) }
                         )
                     }
+                }
             }
         }
     }

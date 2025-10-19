@@ -16,7 +16,7 @@ navigation3 = "1.0.0-alpha11"
 adaptive-navigation3 = "1.0.0-alpha03"
 
 materialKolor = "3.0.0"
-coil = "2.7.0"
+coil = "3.3.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -43,7 +43,7 @@ androidx-adaptive-navigation3 = { module = "androidx.compose.material3.adaptive:
 androidx-lifecycle-viewmodel-navigation3 = { module = "androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "lifecycle" }
 
 materialKolor = {  module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
-coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

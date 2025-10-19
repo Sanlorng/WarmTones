@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -32,25 +33,40 @@ fun PageScaffold(
     containerColor: Color = MaterialTheme.colorScheme.background,
     contentColor: Color = contentColorFor(containerColor),
     contentWindowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
+    collapsedAppbar: Boolean = false,
     content: @Composable (PaddingValues) -> Unit
 ) {
     Scaffold(
         modifier = modifier,
         topBar = {
-            LargeFlexibleTopAppBar(
-                title = { Text(title) },
-                navigationIcon = {
-                    if (onBack != null) {
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                painter = painterResource(R.drawable.arrow_back_24px),
-                                contentDescription = "返回"
-                            )
-                        }
+            val backIcon = @Composable {
+                if (onBack != null) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_back_24px),
+                            contentDescription = "返回"
+                        )
                     }
-                },
-                actions = actions
-            )
+                }
+            }
+            if (!collapsedAppbar) {
+                LargeFlexibleTopAppBar(
+                    title = { Text(title) },
+                    navigationIcon = {
+                        backIcon()
+                    },
+                    actions = actions
+                )
+            } else {
+                TopAppBar(
+                    title = { Text(title) },
+                    navigationIcon = {
+                        backIcon()
+                    },
+                    actions = actions
+                )
+            }
+
         },
         bottomBar = bottomBar,
         snackbarHost = snackbarHost,
